@@ -7,7 +7,7 @@ services:
     ports:
       - "9042:9042"
     networks:
-      - software_arch_proj
+      - docker-net
     volumes:
       - ./cql_scripts/ddl.cql:/ddl.cql
     healthcheck:
@@ -21,7 +21,7 @@ services:
     image: cassandra:latest
     container_name: cassandra-node2
     networks:
-      - software_arch_proj
+      - docker-net
     environment:
       - CASSANDRA_SEEDS=cassandra-node1  
     depends_on: 
@@ -37,5 +37,5 @@ services:
       timeout: 10s
 
 networks:
-  software_arch_proj:
-    name: software_arch_proj
+  docker-net:
+    name: docker-net

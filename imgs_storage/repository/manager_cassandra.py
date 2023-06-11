@@ -1,8 +1,10 @@
+import random
 from cassandra.cluster import Cluster
 
 
 class CassandraManager:
-    def __init__(self, host, port, keyspace):
+    def __init__(self, hosts, port, keyspace):
+        host = random.choice(hosts)
         self.host = host
         self.port = port
         self.keyspace = keyspace
@@ -48,8 +50,8 @@ class CassandraManager:
         rows = self.session.execute(query)
         return rows
 
-host = "localhost"
+hosts = ["cassandra-node1", "cassandra-node2"]
 port = 9042
 keyspace = "software_arch_proj"
-cassandra_manager = CassandraManager(host, port, keyspace)
+cassandra_manager = CassandraManager(hosts, port, keyspace)
 cassandra_manager.connect()
