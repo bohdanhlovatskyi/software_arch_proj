@@ -1,0 +1,133 @@
+version: '3'
+
+services:
+  cassandra-node1:
+    image: cassandra:latest
+    container_name: cassandra-node1
+    ports:
+      - "9042:9042"
+    networks:
+      - software_arch_proj
+    volumes:
+      - ./cql_scripts/ddl.cql:/ddl.cql
+    healthcheck:
+      test: [ "CMD", "cqlsh", "-f", "ddl.cql" ]
+      interval: 30s
+      retries: 10
+      start_period: 20s
+      timeout: 10s
+  
+  cassandra-node2:
+    image: cassandra:latest
+    container_name: cassandra-node2
+    networks:
+      - software_arch_proj
+    environment:
+      - CASSANDRA_SEEDS=cassandra-node1  
+    depends_on: 
+      cassandra-node1:
+        condition: service_healthy
+    volumes:
+      - ./cql_scripts/ddl.cql:/ddl.cql
+    healthcheck:
+      test: [ "CMD", "cqlsh", "--help" ]
+      interval: 30s
+      retries: 10
+      start_period: 20s
+      timeout: 10s
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+    networks:
+      - software_arch_proj
+  
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - 29092:29092
+    expose:
+      - "9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--list", "--bootstrap-server", "kafka:9092"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    networks:
+      - software_arch_proj
+    
+  
+  init-kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      # blocks until kafka is reachable
+      kafka-topics --bootstrap-server kafka:9092 --list
+
+      echo -e 'Creating kafka topics'
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic message --replication-factor 1 --partitions 1
+
+      echo -e 'Successfully created the following topics:'
+      kafka-topics --bootstrap-server kafka:9092 --list
+      "
+    networks:
+      - software_arch_proj
+  
+  engine:
+    build: ./engine
+    ports:
+      - "8000:8000"
+    depends_on:
+      init-kafka:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - software_arch_proj
+
+  api-gateway:
+    build: ./api_gateway
+    ports:
+      - "8001:8000"
+    depends_on:
+      - imgs_storage
+      - processing
+    restart: unless-stopped
+    networks:
+      - software_arch_proj
+  
+  imgs_storage:
+    build: ./imgs_storage
+    ports:
+       - "8002:8000" 
+    restart: unless-stopped
+    networks:
+      - software_arch_proj
+
+  processing:
+    build: ./processing
+    ports:
+      - "8003:8000"
+    restart: unless-stopped
+    networks:
+      - software_arch_proj
+
+networks:
+  software_arch_proj:
+    name: software_arch_proj
