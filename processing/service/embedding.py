@@ -1,5 +1,6 @@
 
 import PIL
+import ast
 import json
 import torch
 import requests
@@ -59,14 +60,7 @@ def process_text(query_sentence: str) -> List[float]:
     text_emb = model.get_text_features(**inputs)
     return list(text_emb.squeeze(0).numpy())
 
-
 def consume_orders():
-    def jsonify_emb(emb: List[float]):
-        return json.dumps(
-            emb, default=lambda o: o.__dict__,
-            sort_keys=False, indent=4
-        )
-        
     order_consumer = Consumer(consumer_config)
     order_consumer.subscribe(["query"])
 
@@ -81,8 +75,13 @@ def consume_orders():
             print("processing: error", event.error())
             continue
 
-        entry = event.value()
+        entry = ast.literal_eval(event.value().decode("utf-8"))
+        print("received: ", entry)
+        # TODO: should be decomposed into same processing as in controller
+
+        entry = Message(type=entry["type"], body=entry["body"])
         emb = process_entry(entry)
+
         embedding_producer.produce(
-            'embedding', key=event.value()["type"], value=jsonify_emb(emb)
+            'embedding', key=str(0), value=json.dumps(str(emb))
         )
