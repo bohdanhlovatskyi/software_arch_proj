@@ -1,7 +1,23 @@
 import os
 from repository import manager_S3, cassandra_manager
-from domain import ImageMetadata
+from domain import ImageMetadata, ImageId
 from uuid import uuid4 as get_uuid
+from configparser import ConfigParser
+from confluent_kafka import Producer
+from kafka.admin import KafkaAdminClient, NewPartitions
+
+admin_client = KafkaAdminClient(bootstrap_servers="kafka-server:9092")
+topic_partitions = {}
+topic_partitions["query"] = NewPartitions(total_count=1)
+topic_partitions["embedding"] = NewPartitions(total_count=1)
+
+config_parser = ConfigParser(interpolation=None)
+
+with open('config.properties', 'r') as config_file:
+    config_parser.read_file(config_file)
+producer_config = dict(config_parser['kafka_client'])
+
+image_producer = Producer(producer_config)
 
 def save_img(json_data: dict) -> str:
     # img_id = str(get_uuid())
@@ -17,6 +33,15 @@ def save_img(json_data: dict) -> str:
         img_id = img_id,
         img_path = path_s3,
         img_description = json_data['img_description']
+    )
+
+    entry = ImageId(
+        user_id=json_data["user_id"], 
+        img_id=json_data["img_id"],
+    )
+    
+    image_producer.produce(
+            'query', key=str(0), value=entry.json()
     )
 
     return res

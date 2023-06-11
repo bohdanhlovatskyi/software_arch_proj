@@ -1,15 +1,12 @@
-from time import sleep
 from fastapi import FastAPI, status
 
-import controller
-
-sleep(15)
+from controller import api 
 
 app = FastAPI()
 app.include_router(
-    controller.router, 
-    tags=['imgs_storage'], 
-    prefix='/imgs_storage'
+    api.router, 
+    tags=['authentication'], 
+    prefix='/authentication'
 )
 
 @app.get("/", status_code=status.HTTP_200_OK)

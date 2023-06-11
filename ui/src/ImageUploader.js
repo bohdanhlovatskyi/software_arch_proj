@@ -6,6 +6,7 @@ function ImageUploader() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [textQuery, setTextQuery] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
@@ -30,17 +31,22 @@ function ImageUploader() {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        responseType: "blob" 
       })
-      .then(response => {
-        console.log('Text sent successfully:', response.data);
+      .then((response) => {
+        const objectUrl = URL.createObjectURL(response.data);
+        setImageUrl(objectUrl);
       })
-      .catch(error => {
-        console.error('Error sending text:', error);
+      .catch((error) => {
+        console.error("Error retrieving image:", error);
       });
-    
     setTextQuery('');
   };
 
+  const handleReturnBack = () => {
+    setImageUrl('');
+  };
+  
   const handleSentImage = () => {
     // Convert the data URL to Blob
     const dataURLtoBlob = (dataURL) => {
@@ -104,6 +110,8 @@ function ImageUploader() {
       {image && <img src={image} alt="Uploaded" />}
       {image && <button onClick={handleSentImage}>Save Image</button>}
       {textQuery && <button onClick={handleQuery}>Send Query</button>}
+      {imageUrl && <img src={imageUrl} alt="Uploaded" />}
+      {imageUrl && <button onClick={handleReturnBack}>Return Back</button>}
     </div>
   );
 }
