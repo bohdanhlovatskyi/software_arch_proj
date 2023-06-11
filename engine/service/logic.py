@@ -46,7 +46,13 @@ def consume_embeddings():
 
         entry = event.value()
 
-        # TODO: add entry processing
+        print("received image embedding: ", entry)
+        entry = EmbeddingEntry(
+            user_id=entry["user_id"], 
+            img_id=entry["image_id"], 
+            body=entry["body"], 
+        )
+
         status = save_image(entry)
 
         # TODO: add error notication to error service
