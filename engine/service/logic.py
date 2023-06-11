@@ -1,3 +1,4 @@
+import ast
 
 from domain import EmbeddingEntry
 from repository import storage
@@ -44,15 +45,19 @@ def consume_embeddings():
             print("engine: error", event.error())
             continue
 
-        entry = event.value()
+        entry = ast.literal_eval(event.value().decode("utf-8"))
 
-        print("received image embedding: ", entry)
-        entry = EmbeddingEntry(
-            user_id=entry["user_id"], 
-            img_id=entry["image_id"], 
-            body=entry["body"], 
-        )
+        try:
+            entry = EmbeddingEntry(
+                user_id=entry["user_id"], 
+                img_id=entry["img_id"], 
+                body=entry["body"], 
+            )
+            status = save_image(entry)
+        except Exception as ex:
+            print(ex)
+            continue
 
-        status = save_image(entry)
+        print(f"saving image: {entry.img_id} for {entry.user_id}", status)
 
         # TODO: add error notication to error service

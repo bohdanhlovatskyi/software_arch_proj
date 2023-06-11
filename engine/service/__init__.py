@@ -1,1 +1,1 @@
-from .logic import find_closest, save_image
+from .logic import find_closest, save_image, consume_embeddings

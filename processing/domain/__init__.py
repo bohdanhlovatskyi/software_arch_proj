@@ -1,2 +1,2 @@
 from .message import Message
-from .embedding import Embedding
+from .embedding import Embedding, EmbeddingEntry

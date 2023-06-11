@@ -12,7 +12,7 @@ from transformers import (
 )
 
 from typing import List
-from domain import Message, Embedding
+from domain import Message, Embedding, EmbeddingEntry
 
 from configparser import ConfigParser
 from confluent_kafka import Producer, Consumer
@@ -35,7 +35,11 @@ consumer_config.update(config_parser['consumer'])
 def process_entry(entry: Message) -> Embedding:
     # TODO: add enumeration for this
     if entry.type == "url":
-        img_stream = requests.get(entry.body, stream=True).raw
+        try:
+            img_stream = requests.get(entry.body, stream=True).raw
+        except Exception as ex:
+            print(ex)
+            return
         return Embedding(type=entry.type, body=process_image(Image.open(img_stream)))
     elif entry.type == "text":
         return Embedding(type=entry.type, body=process_text(entry.body))
@@ -75,13 +79,24 @@ def consume_orders():
             print("processing: error", event.error())
             continue
 
-        entry = ast.literal_eval(event.value().decode("utf-8"))
-        print("received: ", entry)
         # TODO: should be decomposed into same processing as in controller
+        try:
+            entry = ast.literal_eval(event.value().decode("utf-8"))
+            print("received: ", entry)
+            msg_entry = Message(type="url", body=entry["body"])
+            emb = process_entry(msg_entry)
+            if emb is None:
+                continue
 
-        entry = Message(type=entry["type"], body=entry["body"])
-        emb = process_entry(entry)
+            entry = EmbeddingEntry(
+                user_id=entry["user_id"], 
+                img_id=entry["img_id"], 
+                body=emb.body, 
+            )
+        except Exception as ex: 
+            print(ex)
+            continue
 
         embedding_producer.produce(
-            'embedding', key=str(0), value=json.dumps(str(emb))
+            'embedding', key=str(0), value=entry.json()
         )
