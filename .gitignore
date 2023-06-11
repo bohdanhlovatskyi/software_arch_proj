@@ -3,3 +3,5 @@ external
 env
 *.pkl
 *.jpg
+
+__pycache__
