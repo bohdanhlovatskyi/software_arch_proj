@@ -1,7 +1,9 @@
-
+from time import sleep
 from fastapi import FastAPI, status
 
 import controller
+
+sleep(15)
 
 app = FastAPI()
 app.include_router(

@@ -1,4 +1,3 @@
-
 import PIL
 import ast
 import torch
@@ -42,8 +41,16 @@ def process_entry(entry: Message) -> Embedding:
         return Embedding(type=entry.type, body=process_image(Image.open(img_stream)))
     elif entry.type == "text":
         return Embedding(type=entry.type, body=process_text(entry.body))
+    elif entry.type == "storage":
+        return Embedding("url", body=process_image(image_from_storage(entry.body)))
     else:
         raise NotImplemented
+    
+def image_from_storage(path: str) -> PIL.Image:
+    user_id, img_id = path.split("|")
+
+    return Image.open(requests.get(f'http://localhost:9000/imgs/{user_id}/{img_id}.png', stream=True).raw)
+
 
 @torch.no_grad()
 def process_image(image: PIL.Image) -> List[float]:
@@ -82,7 +89,7 @@ def consume_orders():
         try:
             entry = ast.literal_eval(event.value().decode("utf-8"))
             print("received: ", entry)
-            msg_entry = Message(type="url", body=entry["body"])
+            msg_entry = Message(type="storage", body=f"{entry['user_id']}|{entry['img_id']}")
             emb = process_entry(msg_entry)
             if emb is None:
                 continue

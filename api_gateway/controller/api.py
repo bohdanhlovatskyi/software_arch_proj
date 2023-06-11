@@ -2,15 +2,18 @@ from fastapi import (
     APIRouter, 
     UploadFile, 
     Form, 
-    File
+    File,
+    Response
 )
 import requests
 import uuid
+import json
+import base64
 
 router = APIRouter()
 
-
-STORAGE_URL="http://localhost:8000/"
+STORAGE_URL_UPLOAD='http://localhost:9020/imgs_storage/upload/'
+ENGINE_URL="http://localhost:8000/"
 PROCESSING_URL="http://localhost:8000/"
 
 
@@ -18,42 +21,60 @@ PROCESSING_URL="http://localhost:8000/"
 async def upload_image(file: UploadFile = File(...), name: str = Form(...), description: str = Form(...)):
     content = await file.read()
 
-    json_data = {
-        "user_id": str(uuid.uuid4()),
-        "image_id": str(uuid.uuid4()),
+    payload = {
+        "user_id": '1',
         "img_name": name,
-        "img_description": description
+        "img_description": description,            
+        'image': base64.b64encode(content).decode('utf-8')
     }
-    print(json_data)
+
+    json_payload = json.dumps(payload)
 
     headers = {
-        "Content-Type": "multipart/form-data"
+        'Content-Type': 'application/json'
     }
 
-    files = {
-        "file": content
-    }
+    response = requests.post(STORAGE_URL_UPLOAD, data=json_payload, headers=headers)
 
-    response = requests.post(STORAGE_URL, data=json_data, files=files, headers=headers)
-
-    if response.status_code == 200:
-        print("Request successful")
-    else:
-        print("Request failed:", response.text)
+    
 
 
 @router.post("/query")
 async def receive_text(text: str = Form(...)):
-    json_data = {
-        "user_id": str(uuid.uuid4()),
-        "image_id": str(uuid.uuid4()),
-        "query_text": text
+    processing_json = {
+        "type": "text",
+        "body": text
     }
-    print(json_data)
+    print(processing_json)
 
-    response = requests.post(PROCESSING_URL, data=json_data)
+    # response = requests.post(PROCESSING_URL, data=processing_json)
 
-    if response.status_code == 200:
-        print("Request successful")
-    else:
-        print("Request failed:", response.text)
+    # embedding = response.json().body
+
+    # # TODO: get correct user id
+    # user_id = str(uuid.uuid4())
+
+    # engine_json = {
+    #     "user_id": user_id,
+    #     "body": embedding
+    # }
+    # response = requests.post(ENGINE_URL, data=engine_json)
+
+    # idxs = response.json().documents
+
+    # storage_json = {
+    #     "user_id": user_id,
+    #     "image_idxs": idxs
+    # }
+    # response = requests.post(STORAGE_URL, data=storage_json)
+
+    # image_data = response.image_data
+
+    with open("Yaroslav.jpg", "rb") as file:
+        image_data = file.read()
+
+    headers = {
+        "Content-Type": "image/jpeg"
+    }
+
+    return Response(content=image_data, headers=headers)
