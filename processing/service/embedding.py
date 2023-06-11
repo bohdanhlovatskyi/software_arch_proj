@@ -1,9 +1,9 @@
 
-
 import PIL
+import ast
+import json
 import torch
 import requests
-import numpy as np
 from PIL import Image
 from transformers import (
     CLIPTokenizerFast,
@@ -14,11 +14,23 @@ from transformers import (
 from typing import List
 from domain import Message, Embedding
 
+from configparser import ConfigParser
+from confluent_kafka import Producer, Consumer
+
 # TODO: better way would be some kind of registry and init in main
 model_id = "openai/clip-vit-base-patch32"
 model = CLIPModel.from_pretrained(model_id)
 tokenizer = CLIPTokenizerFast.from_pretrained(model_id)
 processor = CLIPProcessor.from_pretrained(model_id)
+
+config_parser = ConfigParser(interpolation=None)
+
+with open('config.properties', 'r') as config_file:
+    config_parser.read_file(config_file)
+
+producer_config = dict(config_parser['kafka_client'])
+consumer_config = dict(config_parser['kafka_client'])
+consumer_config.update(config_parser['consumer'])
 
 def process_entry(entry: Message) -> Embedding:
     # TODO: add enumeration for this
@@ -47,3 +59,29 @@ def process_text(query_sentence: str) -> List[float]:
     inputs = tokenizer(query_sentence, return_tensors="pt")
     text_emb = model.get_text_features(**inputs)
     return list(text_emb.squeeze(0).numpy())
+
+def consume_orders():
+    order_consumer = Consumer(consumer_config)
+    order_consumer.subscribe(["query"])
+
+    embedding_producer = Producer(producer_config)
+
+    while True:
+        event = order_consumer.poll(1.)
+        if event is None:
+            continue
+
+        if event.error():
+            print("processing: error", event.error())
+            continue
+
+        entry = ast.literal_eval(event.value().decode("utf-8"))
+        print("received: ", entry)
+        # TODO: should be decomposed into same processing as in controller
+
+        entry = Message(type=entry["type"], body=entry["body"])
+        emb = process_entry(entry)
+
+        embedding_producer.produce(
+            'embedding', key=str(0), value=json.dumps(str(emb))
+        )
