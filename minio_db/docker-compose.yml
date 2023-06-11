@@ -1,0 +1,57 @@
+version: '3.7'
+
+services:
+  minio_manager:
+    build:
+      context: minio_manager
+      dockerfile: Dockerfile
+    container_name: minio_manager
+    depends_on:
+      minio_config:
+          condition: service_completed_successfully
+    volumes:
+      - ./logs:/logs      
+    ports:
+      - "9020:8000"
+    networks:
+      - docker-net
+
+  storage:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - 9000:9000
+      - 9090:9090
+    volumes:
+      - ./storage/:/storage
+    environment:
+      MINIO_ROOT_USER: 'root'
+      MINIO_ROOT_PASSWORD: 'password'
+      MINIO_ACCESS_KEY: MINIO_ACCESS_KEY
+      MINIO_SECRET_KEY: MINIO_SECRET_KEY
+    command: server /storage  --console-address ":9090"
+    networks:
+      - docker-net
+
+  minio_config:
+    image: minio/mc
+    container_name: minio_config
+    depends_on:
+      - storage
+    environment:
+      MINIO_SKIP_CLIENT: yes
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc config host add myminio http://storage:9000 root password) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc mb myminio/imgs --ignore-existing;
+      /usr/bin/mc anonymous set public myminio/imgs;
+      exit 0;
+      "
+      # /usr/bin/mc admin update myminio;
+      # until (/usr/bin/mc config host add myminio http://storage:9000 MINIO_ACCESS_KEY MINIO_SECRET_KEY) do echo '...waiting...' && sleep 1; done;
+    networks:
+      - docker-net
+
+networks:
+  docker-net:
+    name: docker-net
