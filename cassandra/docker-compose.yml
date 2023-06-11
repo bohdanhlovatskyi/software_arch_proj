@@ -1,0 +1,41 @@
+version: '3'
+
+services:
+  cassandra-node1:
+    image: cassandra:latest
+    container_name: cassandra-node1
+    ports:
+      - "9042:9042"
+    networks:
+      - software_arch_proj
+    volumes:
+      - ./cql_scripts/ddl.cql:/ddl.cql
+    healthcheck:
+      test: [ "CMD", "cqlsh", "-f", "ddl.cql" ]
+      interval: 30s
+      retries: 10
+      start_period: 20s
+      timeout: 10s
+  
+  cassandra-node2:
+    image: cassandra:latest
+    container_name: cassandra-node2
+    networks:
+      - software_arch_proj
+    environment:
+      - CASSANDRA_SEEDS=cassandra-node1  
+    depends_on: 
+      cassandra-node1:
+        condition: service_healthy
+    volumes:
+      - ./cql_scripts/ddl.cql:/ddl.cql
+    healthcheck:
+      test: [ "CMD", "cqlsh", "--help" ]
+      interval: 30s
+      retries: 10
+      start_period: 20s
+      timeout: 10s
+
+networks:
+  software_arch_proj:
+    name: software_arch_proj
