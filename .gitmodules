@@ -1,4 +1,4 @@
 
 [submodule "external/chroma"]
-    path = external/chroma
-    url = https://github.com/chroma-core/chroma.git
+	path = external/chroma
+	url = https://github.com/chroma-core/chroma.git
