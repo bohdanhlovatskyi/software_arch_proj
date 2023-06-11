@@ -1,1 +1,1 @@
-from .logic import save_img, get_img
+from .logic import save_img, get_img_s3

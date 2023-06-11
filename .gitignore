@@ -8,5 +8,6 @@ __pycache__
 .env
 *.properties
 
+out
 logs/
 storage/

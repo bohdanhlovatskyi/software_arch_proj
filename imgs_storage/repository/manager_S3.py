@@ -1,6 +1,6 @@
 import os
 import io
-
+from datetime import timedelta
 import json
 import base64
 
@@ -39,7 +39,17 @@ class ManagerS3:
         self.minio_client.put_object(self.bucket_name, path_s3, data, size)
         return  {'status': 'OK', 'f_path': path_s3, 'size': size}
 
-    def get_img(self):
-        pass
+    def get_img(self, user_id, img_id):
+        prefix = os.path.join(user_id, img_id)
+        lst = self.minio_client.list_objects(self.bucket_name, prefix=prefix)
+        lst = list(lst)
+        if len(lst) < 1:
+            raise RuntimeError(f'No image by given user_id/img_id: {user_id}/{img_id}')
+        img_path = lst[0].object_name
+        img = self.minio_client.get_object(self.bucket_name, img_path)
+        url = f'http://localhost:9000/{self.bucket_name}/{img_path}'
+        print(f'url: {url}')
+
+        return img, url
 
 manager_S3 = ManagerS3()

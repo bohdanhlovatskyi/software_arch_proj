@@ -9,8 +9,8 @@ services:
     depends_on:
       minio_config:
           condition: service_completed_successfully
-    # volumes:
-    #   - ./logs:/logs      
+    volumes:
+      - ./out:/out      
     ports:
       - "9020:8000"
     networks:
