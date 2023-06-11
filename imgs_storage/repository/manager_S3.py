@@ -2,6 +2,7 @@ import os
 import io
 
 import json
+import base64
 
 from typing import List
 from minio import Minio
@@ -28,17 +29,15 @@ class ManagerS3:
             print(f'creating bucket, name: "{self.bucket_name}"')
             self.minio_client.make_bucket(self.bucket_name)
         else:
-            print(f'bucket "{self.bucket_name} already exists')
+            print(f'bucket "{self.bucket_name}" already exists')
     
-    def save_img_to_s3(self, img: bytes, data_dict: dict):
-        f_ext = data_dict['img_name'].split('.')[-1]
-        f_path = os.path.join(data_dict["user_id"], f'{data_dict["image_id"]}.{f_ext}')
-
-        print(f'file path S3: {f_path}')
-        data = io.BytesIO(img)
+    def save_img_to_s3(self, img: bytes, path_s3: str):
+        print(f'file path S3: {path_s3}')
+        data = base64.b64decode(img)
+        data = io.BytesIO(data)
         size = len(data.getbuffer())
-        self.minio_client.put_object(self.bucket_name, f_path, data, size)
-        return  {'status': 'OK', 'f_path': f_path, 'size': size}
+        self.minio_client.put_object(self.bucket_name, path_s3, data, size)
+        return  {'status': 'OK', 'f_path': path_s3, 'size': size}
 
     def get_img(self):
         pass
