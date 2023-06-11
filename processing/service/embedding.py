@@ -1,7 +1,6 @@
 
 import PIL
 import ast
-import json
 import torch
 import requests
 from PIL import Image
